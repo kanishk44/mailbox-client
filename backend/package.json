@@ -1,0 +1,16 @@
+{
+  "name": "mailbox-client-backend",
+  "version": "1.0.0",
+  "description": "Mailbox Client Backend",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
