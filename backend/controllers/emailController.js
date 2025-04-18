@@ -16,6 +16,7 @@ exports.sendEmail = async (req, res) => {
       from,
       subject,
       content,
+      read: false,
       sentAt: new Date(),
     });
 
@@ -60,9 +61,9 @@ exports.getSentEmails = async (req, res) => {
 // Mark email as read
 exports.markAsRead = async (req, res) => {
   try {
-    const { emailId } = req.params;
+    const { id } = req.params;
     const email = await Email.findByIdAndUpdate(
-      emailId,
+      id,
       { read: true },
       { new: true }
     );
@@ -75,5 +76,31 @@ exports.markAsRead = async (req, res) => {
   } catch (error) {
     console.error("Error marking email as read:", error);
     res.status(500).json({ message: "Error updating email" });
+  }
+};
+
+// Get unread counts
+exports.getUnreadCounts = async (req, res) => {
+  try {
+    const userEmail = req.user.email;
+
+    // Get unread counts for different folders
+    const [inbox, spam] = await Promise.all([
+      Email.countDocuments({
+        to: userEmail,
+        read: false,
+        folder: { $ne: "spam" },
+      }),
+      Email.countDocuments({ to: userEmail, read: false, folder: "spam" }),
+    ]);
+
+    res.json({
+      inbox,
+      unread: inbox + spam, // Total unread across all folders
+      spam,
+    });
+  } catch (error) {
+    console.error("Error getting unread counts:", error);
+    res.status(500).json({ message: "Error getting unread counts" });
   }
 };
