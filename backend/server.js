@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const authRoutes = require("./routes/auth");
+const emailRoutes = require("./routes/emails");
 
 const app = express();
 
@@ -12,13 +13,14 @@ app.use(
     origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
 app.use(express.json());
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI, {
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/auth-db", {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
@@ -27,6 +29,7 @@ mongoose
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/emails", emailRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
