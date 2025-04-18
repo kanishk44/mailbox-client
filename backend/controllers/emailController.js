@@ -10,18 +10,36 @@ exports.sendEmail = async (req, res) => {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // Create new email
-    const email = new Email({
+    const currentTime = new Date();
+
+    // Create email for recipient's inbox
+    const recipientEmail = new Email({
       to,
       from,
       subject,
       content,
       read: false,
-      sentAt: new Date(),
+      folder: "inbox",
+      sentAt: currentTime,
     });
 
-    await email.save();
-    res.status(201).json({ message: "Email sent successfully", email });
+    // Create email for sender's sent folder
+    const senderEmail = new Email({
+      to,
+      from,
+      subject,
+      content,
+      read: true,
+      folder: "sent",
+      sentAt: currentTime,
+    });
+
+    // Save both emails
+    await Promise.all([recipientEmail.save(), senderEmail.save()]);
+
+    res
+      .status(201)
+      .json({ message: "Email sent successfully", email: recipientEmail });
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({ message: "Error sending email" });
@@ -32,9 +50,17 @@ exports.sendEmail = async (req, res) => {
 exports.getReceivedEmails = async (req, res) => {
   try {
     const { email } = req.query;
-    const emails = await Email.find({ to: email })
+
+    if (!email) {
+      return res.status(400).json({ message: "Email parameter is required" });
+    }
+
+    const emails = await Email.find({
+      to: email,
+      folder: "inbox",
+    })
       .sort({ sentAt: -1 })
-      .limit(50); // Limit to last 50 emails for performance
+      .limit(50);
 
     res.json(emails);
   } catch (error) {
@@ -47,9 +73,12 @@ exports.getReceivedEmails = async (req, res) => {
 exports.getSentEmails = async (req, res) => {
   try {
     const { email } = req.query;
-    const emails = await Email.find({ from: email })
+    const emails = await Email.find({
+      from: email,
+      folder: "sent", // Only show emails in sent folder
+    })
       .sort({ sentAt: -1 })
-      .limit(50); // Limit to last 50 emails for performance
+      .limit(50);
 
     res.json(emails);
   } catch (error) {
@@ -62,17 +91,27 @@ exports.getSentEmails = async (req, res) => {
 exports.markAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const email = await Email.findByIdAndUpdate(
-      id,
-      { read: true },
-      { new: true }
-    );
+    const { email: userEmail } = req.query;
 
-    if (!email) {
-      return res.status(404).json({ message: "Email not found" });
+    if (!userEmail) {
+      return res.status(400).json({ message: "Email parameter is required" });
     }
 
-    res.json(email);
+    // Find and update the email in one operation
+    const updatedEmail = await Email.findOneAndUpdate(
+      { _id: id, to: userEmail },
+      { read: true },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedEmail) {
+      return res.status(404).json({
+        message:
+          "Email not found or you don't have permission to mark it as read",
+      });
+    }
+
+    res.json(updatedEmail);
   } catch (error) {
     console.error("Error marking email as read:", error);
     res.status(500).json({ message: "Error updating email" });
@@ -84,23 +123,63 @@ exports.getUnreadCounts = async (req, res) => {
   try {
     const userEmail = req.user.email;
 
-    // Get unread counts for different folders
-    const [inbox, spam] = await Promise.all([
-      Email.countDocuments({
-        to: userEmail,
-        read: false,
-        folder: { $ne: "spam" },
-      }),
-      Email.countDocuments({ to: userEmail, read: false, folder: "spam" }),
-    ]);
-
-    res.json({
-      inbox,
-      unread: inbox + spam, // Total unread across all folders
-      spam,
+    // Get unread count for inbox only
+    const inbox = await Email.countDocuments({
+      to: userEmail,
+      read: false,
+      folder: "inbox",
     });
+
+    res.json({ inbox });
   } catch (error) {
     console.error("Error getting unread counts:", error);
     res.status(500).json({ message: "Error getting unread counts" });
+  }
+};
+
+// Move email to trash
+exports.moveToTrash = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userEmail = req.user.email;
+
+    // Only allow moving to trash if the user is either the sender or recipient
+    const email = await Email.findOne({
+      _id: id,
+      $or: [{ from: userEmail }, { to: userEmail }],
+    });
+
+    if (!email) {
+      return res.status(404).json({
+        message:
+          "Email not found or you don't have permission to move it to trash",
+      });
+    }
+
+    email.folder = "trash";
+    await email.save();
+
+    res.json(email);
+  } catch (error) {
+    console.error("Error moving email to trash:", error);
+    res.status(500).json({ message: "Error updating email" });
+  }
+};
+
+// Get trashed emails
+exports.getTrashedEmails = async (req, res) => {
+  try {
+    const { email } = req.query;
+    const emails = await Email.find({
+      $or: [{ to: email }, { from: email }],
+      folder: "trash",
+    })
+      .sort({ sentAt: -1 })
+      .limit(50);
+
+    res.json(emails);
+  } catch (error) {
+    console.error("Error fetching trashed emails:", error);
+    res.status(500).json({ message: "Error fetching emails" });
   }
 };

@@ -6,8 +6,6 @@ const Sidebar = ({ currentFolder }) => {
   const navigate = useNavigate();
   const [unreadCounts, setUnreadCounts] = useState({
     inbox: 0,
-    unread: 0,
-    spam: 0,
   });
 
   useEffect(() => {
@@ -20,7 +18,7 @@ const Sidebar = ({ currentFolder }) => {
       const response = await axios.get("/api/emails/unread-counts", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setUnreadCounts(response.data);
+      setUnreadCounts({ inbox: response.data.inbox });
     } catch (err) {
       console.error("Error fetching unread counts:", err);
     }
@@ -28,12 +26,7 @@ const Sidebar = ({ currentFolder }) => {
 
   const folders = [
     { name: "Inbox", path: "/inbox", icon: "📥", count: unreadCounts.inbox },
-    { name: "Unread", path: "/unread", icon: "📩", count: unreadCounts.unread },
-    { name: "Starred", path: "/starred", icon: "⭐" },
-    { name: "Drafts", path: "/drafts", icon: "📝" },
     { name: "Sent", path: "/sent", icon: "📤" },
-    { name: "Archive", path: "/archive", icon: "📁" },
-    { name: "Spam", path: "/spam", icon: "⚠️", count: unreadCounts.spam },
     { name: "Trash", path: "/trash", icon: "🗑️" },
   ];
 

@@ -21,18 +21,27 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
       let endpoint = "/api/emails/received";
       if (folder === "sent") {
         endpoint = "/api/emails/sent";
+      } else if (folder === "trash") {
+        endpoint = "/api/emails/trash";
       }
+
+      console.log("Fetching emails:", {
+        endpoint,
+        userEmail,
+        folder,
+      });
 
       const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         params: { email: userEmail },
       });
 
+      console.log("Response:", response.data);
       setEmails(response.data);
       setError("");
     } catch (err) {
-      setError("Failed to fetch emails");
       console.error("Error fetching emails:", err);
+      setError("Failed to fetch emails");
     } finally {
       setLoading(false);
     }
@@ -41,15 +50,28 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
   const markAsRead = async (emailId) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(
+      const userEmail = localStorage.getItem("email");
+
+      const response = await axios.put(
         `/api/emails/${emailId}/read`,
         {},
         {
           headers: { Authorization: `Bearer ${token}` },
+          params: { email: userEmail },
         }
       );
+
+      // Update the email in the local state with the response data
+      setEmails(
+        emails.map((email) =>
+          email._id === emailId ? { ...email, read: true } : email
+        )
+      );
+
+      return response.data;
     } catch (err) {
       console.error("Error marking email as read:", err);
+      throw err;
     }
   };
 
@@ -73,13 +95,13 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
     // If clicking checkbox, don't select the email
     if (e.target.type === "checkbox") return;
 
-    // If email is unread, mark it as read
-    if (!email.read) {
-      await markAsRead(email._id);
-      // Update the email in the local state
-      setEmails(
-        emails.map((e) => (e._id === email._id ? { ...e, read: true } : e))
-      );
+    // Only mark as read if it's in the inbox and unread
+    if (folder === "inbox" && !email.read) {
+      try {
+        await markAsRead(email._id);
+      } catch (error) {
+        console.error("Failed to mark email as read:", error);
+      }
     }
 
     onEmailSelect(email);
@@ -165,7 +187,7 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
             key={email._id}
             onClick={(e) => handleEmailClick(email, e)}
             className={`flex items-center p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-              !email.read ? "bg-blue-50" : ""
+              folder === "inbox" && !email.read ? "bg-blue-50" : ""
             } ${selectedEmailId === email._id ? "bg-blue-100" : ""}`}
           >
             <div className="flex items-center space-x-4 flex-1 min-w-0">
@@ -175,16 +197,19 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
                 onChange={() => handleSelectEmail(email._id)}
                 className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
-              <div className="relative">
-                {!email.read && (
-                  <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full" />
-                )}
-              </div>
+              {/* Only show unread indicator for inbox emails */}
+              {folder === "inbox" && (
+                <div className="relative">
+                  {!email.read && (
+                    <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full" />
+                  )}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span
                     className={`text-sm truncate ${
-                      !email.read ? "font-semibold" : ""
+                      folder === "inbox" && !email.read ? "font-semibold" : ""
                     }`}
                   >
                     {folder === "sent"
@@ -197,7 +222,7 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
                 </div>
                 <div
                   className={`text-sm truncate ${
-                    !email.read ? "font-semibold" : ""
+                    folder === "inbox" && !email.read ? "font-semibold" : ""
                   }`}
                 >
                   {email.subject}

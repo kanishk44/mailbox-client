@@ -31,6 +31,12 @@ const emailSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    folder: {
+      type: String,
+      required: true,
+      enum: ["inbox", "sent", "trash"],
+      default: "inbox",
+    },
   },
   {
     timestamps: true,
@@ -40,6 +46,6 @@ const emailSchema = new mongoose.Schema(
 // Create indexes for faster querying
 emailSchema.index({ to: 1 });
 emailSchema.index({ from: 1 });
-emailSchema.index({ sentAt: -1 });
+emailSchema.index({ folder: 1 });
 
 module.exports = mongoose.model("Email", emailSchema);

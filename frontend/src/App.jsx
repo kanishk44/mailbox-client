@@ -16,12 +16,7 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/inbox" element={<MailboxLayout />} />
         <Route path="/sent" element={<MailboxLayout />} />
-        <Route path="/drafts" element={<MailboxLayout />} />
-        <Route path="/starred" element={<MailboxLayout />} />
-        <Route path="/spam" element={<MailboxLayout />} />
         <Route path="/trash" element={<MailboxLayout />} />
-        <Route path="/archive" element={<MailboxLayout />} />
-        <Route path="/unread" element={<MailboxLayout />} />
         <Route path="/" element={<Navigate to="/inbox" replace />} />
         <Route path="*" element={<Navigate to="/inbox" replace />} />
       </Routes>
