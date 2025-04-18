@@ -43,7 +43,8 @@ const Login = () => {
         const response = await axios.post("/api/auth/login", formData);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("userId", response.data.userId);
-        navigate("/welcome"); // Navigate to welcome page after successful login
+        localStorage.setItem("email", formData.email);
+        navigate("/inbox");
       } catch (error) {
         setErrors({
           submit:
