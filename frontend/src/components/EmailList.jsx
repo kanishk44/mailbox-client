@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { format } from "date-fns";
 
@@ -10,35 +10,72 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [emailToDelete, setEmailToDelete] = useState(null);
 
+  // Memoize fetchEmails to prevent unnecessary recreations
+  const fetchEmails = useCallback(
+    async (showLoading = true) => {
+      try {
+        if (showLoading) {
+          setLoading(true);
+        }
+        const token = localStorage.getItem("token");
+        const userEmail = localStorage.getItem("email");
+
+        let endpoint = "/api/emails/received";
+        if (folder === "sent") {
+          endpoint = "/api/emails/sent";
+        }
+
+        const response = await axios.get(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
+          params: { email: userEmail },
+        });
+
+        // Compare new emails with existing ones to avoid unnecessary updates
+        setEmails((prevEmails) => {
+          // If lengths are different, we definitely have changes
+          if (prevEmails.length !== response.data.length) {
+            return response.data;
+          }
+
+          // Check if any email content has changed
+          const hasChanges = response.data.some((newEmail, index) => {
+            const oldEmail = prevEmails[index];
+            return (
+              !oldEmail ||
+              oldEmail._id !== newEmail._id ||
+              oldEmail.read !== newEmail.read
+            );
+          });
+
+          return hasChanges ? response.data : prevEmails;
+        });
+
+        setError("");
+      } catch (err) {
+        console.error("Error fetching emails:", err);
+        setError("Failed to fetch emails");
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [folder]
+  );
+
+  // Initial fetch
   useEffect(() => {
     fetchEmails();
-  }, [folder]);
+  }, [fetchEmails]);
 
-  const fetchEmails = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const userEmail = localStorage.getItem("email");
+  // Setup polling
+  useEffect(() => {
+    const pollInterval = setInterval(() => {
+      fetchEmails(false); // Don't show loading state during polling
+    }, 2000);
 
-      let endpoint = "/api/emails/received";
-      if (folder === "sent") {
-        endpoint = "/api/emails/sent";
-      }
-
-      const response = await axios.get(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { email: userEmail },
-      });
-
-      setEmails(response.data);
-      setError("");
-    } catch (err) {
-      console.error("Error fetching emails:", err);
-      setError("Failed to fetch emails");
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => clearInterval(pollInterval);
+  }, [fetchEmails]);
 
   const markAsRead = async (emailId) => {
     try {
