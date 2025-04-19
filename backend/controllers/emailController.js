@@ -75,7 +75,7 @@ exports.getSentEmails = async (req, res) => {
     const { email } = req.query;
     const emails = await Email.find({
       from: email,
-      folder: "sent", // Only show emails in sent folder
+      folder: "sent",
     })
       .sort({ sentAt: -1 })
       .limit(50);
@@ -121,7 +121,7 @@ exports.markAsRead = async (req, res) => {
 // Get unread counts
 exports.getUnreadCounts = async (req, res) => {
   try {
-    const userEmail = req.user.email;
+    const { email: userEmail } = req.query;
 
     // Get unread count for inbox only
     const inbox = await Email.countDocuments({
@@ -137,49 +137,31 @@ exports.getUnreadCounts = async (req, res) => {
   }
 };
 
-// Move email to trash
-exports.moveToTrash = async (req, res) => {
+// Delete email
+exports.deleteEmail = async (req, res) => {
   try {
     const { id } = req.params;
-    const userEmail = req.user.email;
+    const { email: userEmail } = req.query;
 
-    // Only allow moving to trash if the user is either the sender or recipient
-    const email = await Email.findOne({
+    if (!userEmail) {
+      return res.status(400).json({ message: "Email parameter is required" });
+    }
+
+    // Only allow deletion if the user is either the sender or recipient
+    const email = await Email.findOneAndDelete({
       _id: id,
       $or: [{ from: userEmail }, { to: userEmail }],
     });
 
     if (!email) {
       return res.status(404).json({
-        message:
-          "Email not found or you don't have permission to move it to trash",
+        message: "Email not found or you don't have permission to delete it",
       });
     }
 
-    email.folder = "trash";
-    await email.save();
-
-    res.json(email);
+    res.json({ message: "Email deleted successfully" });
   } catch (error) {
-    console.error("Error moving email to trash:", error);
-    res.status(500).json({ message: "Error updating email" });
-  }
-};
-
-// Get trashed emails
-exports.getTrashedEmails = async (req, res) => {
-  try {
-    const { email } = req.query;
-    const emails = await Email.find({
-      $or: [{ to: email }, { from: email }],
-      folder: "trash",
-    })
-      .sort({ sentAt: -1 })
-      .limit(50);
-
-    res.json(emails);
-  } catch (error) {
-    console.error("Error fetching trashed emails:", error);
-    res.status(500).json({ message: "Error fetching emails" });
+    console.error("Error deleting email:", error);
+    res.status(500).json({ message: "Error deleting email" });
   }
 };

@@ -16,7 +16,6 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/inbox" element={<MailboxLayout />} />
         <Route path="/sent" element={<MailboxLayout />} />
-        <Route path="/trash" element={<MailboxLayout />} />
         <Route path="/" element={<Navigate to="/inbox" replace />} />
         <Route path="*" element={<Navigate to="/inbox" replace />} />
       </Routes>

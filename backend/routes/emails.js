@@ -6,8 +6,7 @@ const {
   getSentEmails,
   markAsRead,
   getUnreadCounts,
-  moveToTrash,
-  getTrashedEmails,
+  deleteEmail,
 } = require("../controllers/emailController");
 const auth = require("../middleware/auth"); // Assuming you have auth middleware
 
@@ -17,7 +16,6 @@ router.get("/received", auth, getReceivedEmails);
 router.get("/sent", auth, getSentEmails);
 router.put("/:id/read", auth, markAsRead);
 router.get("/unread-counts", auth, getUnreadCounts);
-router.put("/:id/trash", auth, moveToTrash);
-router.get("/trash", auth, getTrashedEmails);
+router.delete("/:id", auth, deleteEmail);
 
 module.exports = router;

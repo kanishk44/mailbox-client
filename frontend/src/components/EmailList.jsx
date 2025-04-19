@@ -7,6 +7,8 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEmails, setSelectedEmails] = useState([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [emailToDelete, setEmailToDelete] = useState(null);
 
   useEffect(() => {
     fetchEmails();
@@ -21,22 +23,13 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
       let endpoint = "/api/emails/received";
       if (folder === "sent") {
         endpoint = "/api/emails/sent";
-      } else if (folder === "trash") {
-        endpoint = "/api/emails/trash";
       }
-
-      console.log("Fetching emails:", {
-        endpoint,
-        userEmail,
-        folder,
-      });
 
       const response = await axios.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
         params: { email: userEmail },
       });
 
-      console.log("Response:", response.data);
       setEmails(response.data);
       setError("");
     } catch (err) {
@@ -75,6 +68,26 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
     }
   };
 
+  const handleDelete = async (emailId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const userEmail = localStorage.getItem("email");
+
+      await axios.delete(`/api/emails/${emailId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { email: userEmail },
+      });
+
+      // Remove the deleted email from the state
+      setEmails(emails.filter((email) => email._id !== emailId));
+      setEmailToDelete(null);
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      console.error("Error deleting email:", err);
+      setError("Failed to delete email");
+    }
+  };
+
   const handleSelectEmail = (emailId) => {
     setSelectedEmails((prev) =>
       prev.includes(emailId)
@@ -107,6 +120,12 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
     onEmailSelect(email);
   };
 
+  const handleDeleteClick = (email, e) => {
+    e.stopPropagation(); // Prevent email selection
+    setEmailToDelete(email);
+    setShowDeleteConfirm(true);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
@@ -137,7 +156,41 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full relative">
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this email?
+              {emailToDelete && (
+                <span className="block mt-2 text-sm text-gray-500">
+                  Subject: {emailToDelete.subject}
+                </span>
+              )}
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setEmailToDelete(null);
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(emailToDelete._id)}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="border-b border-gray-200 p-4 flex items-center space-x-4 bg-white">
         <div className="flex items-center space-x-4">
@@ -147,7 +200,18 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
             onChange={handleSelectAll}
             className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
-          <button className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-full">
+          <button
+            onClick={() => {
+              if (selectedEmails.length > 0) {
+                setEmailToDelete({
+                  _id: selectedEmails[0],
+                  subject: "multiple emails",
+                });
+                setShowDeleteConfirm(true);
+              }
+            }}
+            className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-full"
+          >
             <svg
               className="w-5 h-5"
               fill="none"
@@ -216,9 +280,29 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
                       ? `To: ${email.to}`
                       : `From: ${email.from}`}
                   </span>
-                  <span className="text-xs text-gray-500">
-                    {format(new Date(email.sentAt), "MMM d, h:mm a")}
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">
+                      {format(new Date(email.sentAt), "MMM d, h:mm a")}
+                    </span>
+                    <button
+                      onClick={(e) => handleDeleteClick(email, e)}
+                      className="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-gray-100"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div
                   className={`text-sm truncate ${

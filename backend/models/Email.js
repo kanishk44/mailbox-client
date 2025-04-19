@@ -34,7 +34,7 @@ const emailSchema = new mongoose.Schema(
     folder: {
       type: String,
       required: true,
-      enum: ["inbox", "sent", "trash"],
+      enum: ["inbox", "sent"],
       default: "inbox",
     },
   },
