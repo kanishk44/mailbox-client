@@ -4,23 +4,27 @@ import axios from "axios";
 
 const Sidebar = ({ currentFolder }) => {
   const navigate = useNavigate();
-  const [unreadCounts, setUnreadCounts] = useState({
-    inbox: 0,
-  });
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    fetchUnreadCounts();
-  }, [currentFolder]);
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const fetchUnreadCounts = async () => {
+  const fetchUnreadCount = async () => {
     try {
       const token = localStorage.getItem("token");
+      const userEmail = localStorage.getItem("email");
+
       const response = await axios.get("/api/emails/unread-counts", {
         headers: { Authorization: `Bearer ${token}` },
+        params: { email: userEmail },
       });
-      setUnreadCounts({ inbox: response.data.inbox });
-    } catch (err) {
-      console.error("Error fetching unread counts:", err);
+
+      setUnreadCount(response.data.inbox);
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
     }
   };
 
@@ -43,6 +47,7 @@ const Sidebar = ({ currentFolder }) => {
           />
         </svg>
       ),
+      unreadCount: unreadCount,
     },
     {
       name: "Sent",
@@ -99,9 +104,9 @@ const Sidebar = ({ currentFolder }) => {
           >
             <span className="mr-3 text-lg">{folder.icon}</span>
             <span className="flex-1">{folder.name}</span>
-            {folder.count > 0 && (
+            {folder.unreadCount > 0 && (
               <span className="bg-blue-100 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">
-                {folder.count}
+                {folder.unreadCount}
               </span>
             )}
           </Link>
