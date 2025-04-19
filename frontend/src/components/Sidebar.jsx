@@ -1,32 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useUnreadCount } from "../hooks/useUnreadCount";
 
 const Sidebar = ({ currentFolder }) => {
   const navigate = useNavigate();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 2000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchUnreadCount = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const userEmail = localStorage.getItem("email");
-
-      const response = await axios.get("/api/emails/unread-counts", {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { email: userEmail },
-      });
-
-      setUnreadCount(response.data.inbox);
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
-  };
+  const unreadCount = useUnreadCount();
 
   const folders = [
     {

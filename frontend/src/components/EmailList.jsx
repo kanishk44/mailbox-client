@@ -1,67 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { useEmails } from "../hooks/useEmails";
 
 const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
-  const [emails, setEmails] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [selectedEmails, setSelectedEmails] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [emailToDelete, setEmailToDelete] = useState(null);
 
-  // Memoize fetchEmails to prevent unnecessary recreations
-  const fetchEmails = useCallback(
-    async (showLoading = true) => {
-      try {
-        if (showLoading) {
-          setLoading(true);
-        }
-        const token = localStorage.getItem("token");
-        const userEmail = localStorage.getItem("email");
-
-        let endpoint = "/api/emails/received";
-        if (folder === "sent") {
-          endpoint = "/api/emails/sent";
-        }
-
-        const response = await axios.get(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { email: userEmail },
-        });
-
-        // Compare new emails with existing ones to avoid unnecessary updates
-        setEmails((prevEmails) => {
-          // If lengths are different, we definitely have changes
-          if (prevEmails.length !== response.data.length) {
-            return response.data;
-          }
-
-          // Check if any email content has changed
-          const hasChanges = response.data.some((newEmail, index) => {
-            const oldEmail = prevEmails[index];
-            return (
-              !oldEmail ||
-              oldEmail._id !== newEmail._id ||
-              oldEmail.read !== newEmail.read
-            );
-          });
-
-          return hasChanges ? response.data : prevEmails;
-        });
-
-        setError("");
-      } catch (err) {
-        console.error("Error fetching emails:", err);
-        setError("Failed to fetch emails");
-      } finally {
-        if (showLoading) {
-          setLoading(false);
-        }
-      }
-    },
-    [folder]
-  );
+  const { emails, loading, error, fetchEmails, markAsRead, deleteEmail } =
+    useEmails(folder);
 
   // Initial fetch
   useEffect(() => {
@@ -77,68 +24,20 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
     return () => clearInterval(pollInterval);
   }, [fetchEmails]);
 
-  const markAsRead = async (emailId) => {
-    try {
-      const token = localStorage.getItem("token");
-      const userEmail = localStorage.getItem("email");
-
-      const response = await axios.put(
-        `/api/emails/${emailId}/read`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params: { email: userEmail },
-        }
-      );
-
-      // Update the email in the local state with the response data
-      setEmails(
-        emails.map((email) =>
-          email._id === emailId ? { ...email, read: true } : email
-        )
-      );
-
-      return response.data;
-    } catch (err) {
-      console.error("Error marking email as read:", err);
-      throw err;
-    }
-  };
-
   const handleDelete = async (emailId) => {
     try {
-      const token = localStorage.getItem("token");
-      const userEmail = localStorage.getItem("email");
-
-      await axios.delete(`/api/emails/${emailId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { email: userEmail },
-      });
-
-      // Remove the deleted email from the state
-      setEmails(emails.filter((email) => email._id !== emailId));
+      await deleteEmail(emailId);
       setEmailToDelete(null);
       setShowDeleteConfirm(false);
     } catch (err) {
       console.error("Error deleting email:", err);
-      setError("Failed to delete email");
     }
   };
 
-  const handleSelectEmail = (emailId) => {
-    setSelectedEmails((prev) =>
-      prev.includes(emailId)
-        ? prev.filter((id) => id !== emailId)
-        : [...prev, emailId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    setSelectedEmails(
-      selectedEmails.length === emails.length
-        ? []
-        : emails.map((email) => email._id)
-    );
+  const handleDeleteClick = (email, e) => {
+    e.stopPropagation(); // Prevent email selection
+    setEmailToDelete(email);
+    setShowDeleteConfirm(true);
   };
 
   const handleEmailClick = async (email, e) => {
@@ -157,37 +56,26 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
     onEmailSelect(email);
   };
 
-  const handleDeleteClick = (email, e) => {
-    e.stopPropagation(); // Prevent email selection
-    setEmailToDelete(email);
-    setShowDeleteConfirm(true);
+  const handleSelectEmail = (emailId) => {
+    setSelectedEmails((prev) =>
+      prev.includes(emailId)
+        ? prev.filter((id) => id !== emailId)
+        : [...prev, emailId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    setSelectedEmails(
+      selectedEmails.length === emails.length
+        ? []
+        : emails.map((email) => email._id)
+    );
   };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-red-500">
-        <svg
-          className="w-12 h-12 mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
-        <p className="text-lg">{error}</p>
       </div>
     );
   }
@@ -263,26 +151,13 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
               />
             </svg>
           </button>
-          <button className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-full">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-              />
-            </svg>
-          </button>
         </div>
       </div>
 
       {/* Email List */}
       <div className="divide-y divide-gray-200 overflow-y-auto flex-1">
+        {error && <div className="p-4 text-red-600 bg-red-50">{error}</div>}
+
         {emails.map((email) => (
           <div
             key={email._id}
@@ -298,7 +173,6 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
                 onChange={() => handleSelectEmail(email._id)}
                 className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
               />
-              {/* Only show unread indicator for inbox emails */}
               {folder === "inbox" && (
                 <div className="relative">
                   {!email.read && (
@@ -356,7 +230,7 @@ const EmailList = ({ folder, onEmailSelect, selectedEmailId }) => {
           </div>
         ))}
 
-        {emails.length === 0 && (
+        {emails.length === 0 && !error && (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <svg
               className="w-12 h-12 mb-4"
