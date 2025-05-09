@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Editor } from "@tinymce/tinymce-react";
-import axios from "axios";
+import api from "../api/axios";
 
 const ComposeEmail = ({ isOpen, onClose }) => {
   const [to, setTo] = useState("");
@@ -28,7 +28,7 @@ const ComposeEmail = ({ isOpen, onClose }) => {
         sentAt: new Date().toISOString(),
       };
 
-      await axios.post("/api/emails/send", emailData, {
+      await api.post("/api/emails/send", emailData, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

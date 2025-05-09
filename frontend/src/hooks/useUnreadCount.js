@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api/axios";
 
 export const useUnreadCount = () => {
   const [unreadCount, setUnreadCount] = useState(0);
@@ -9,7 +9,7 @@ export const useUnreadCount = () => {
       const token = localStorage.getItem("token");
       const userEmail = localStorage.getItem("email");
 
-      const response = await axios.get("/api/emails/unread-counts", {
+      const response = await api.get("/api/emails/unread-counts", {
         headers: { Authorization: `Bearer ${token}` },
         params: { email: userEmail },
       });

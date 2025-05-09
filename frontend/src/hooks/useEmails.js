@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import axios from "axios";
+import api from "../api/axios";
 
 export const useEmails = (folder) => {
   const [emails, setEmails] = useState([]);
@@ -20,7 +20,7 @@ export const useEmails = (folder) => {
           endpoint = "/api/emails/sent";
         }
 
-        const response = await axios.get(endpoint, {
+        const response = await api.get(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
           params: { email: userEmail },
         });
@@ -59,7 +59,7 @@ export const useEmails = (folder) => {
       const token = localStorage.getItem("token");
       const userEmail = localStorage.getItem("email");
 
-      const response = await axios.put(
+      const response = await api.put(
         `/api/emails/${emailId}/read`,
         {},
         {
@@ -86,7 +86,7 @@ export const useEmails = (folder) => {
       const token = localStorage.getItem("token");
       const userEmail = localStorage.getItem("email");
 
-      await axios.delete(`/api/emails/${emailId}`, {
+      await api.delete(`/api/emails/${emailId}`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { email: userEmail },
       });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { Link } from "react-router-dom";
 
 const Signup = () => {
@@ -48,7 +48,7 @@ const Signup = () => {
 
     if (validateForm()) {
       try {
-        const response = await axios.post("/api/auth/signup", {
+        const response = await api.post("/api/auth/signup", {
           email: formData.email,
           password: formData.password,
         });

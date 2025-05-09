@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../api/axios";
 import { useNavigate, Link } from "react-router-dom";
 
 const Login = () => {
@@ -40,7 +40,7 @@ const Login = () => {
 
     if (validateForm()) {
       try {
-        const response = await axios.post("/api/auth/login", formData);
+        const response = await api.post("/api/auth/login", formData);
         localStorage.setItem("token", response.data.token);
         localStorage.setItem("userId", response.data.userId);
         localStorage.setItem("email", formData.email);
