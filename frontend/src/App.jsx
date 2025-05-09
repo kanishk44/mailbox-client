@@ -4,7 +4,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import SignUp from "./components/SignUp";
+import Signup from "./components/Signup";
 import Login from "./components/Login";
 import MailboxLayout from "./components/MailboxLayout";
 
@@ -12,7 +12,7 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/signup" element={<SignUp />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/inbox" element={<MailboxLayout />} />
         <Route path="/sent" element={<MailboxLayout />} />
