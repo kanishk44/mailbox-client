@@ -9,11 +9,7 @@ dotenv.config();
 export default defineConfig({
   server: {
     proxy: {
-      "/api": {
-        target: process.env.VITE_API_URL,
-        changeOrigin: true,
-        secure: false,
-      },
+      "/api": process.env.VITE_API_URL,
     },
   },
   plugins: [react(), tailwindcss()],
